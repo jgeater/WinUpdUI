@@ -7,7 +7,7 @@
         mc:Ignorable="d"
         Title="Windows Update Diagnostic Tool" 
         Height="700" Width="1200"
-        Background="{StaticResource BackgroundBrush}"
+        Background="{DynamicResource BackgroundBrush}"
         WindowStartupLocation="CenterScreen">
 
     <Grid>
@@ -62,8 +62,8 @@
 
             <!-- Navigation Sidebar -->
             <Border Grid.Column="0" 
-                    Background="White"
-                    BorderBrush="{StaticResource BorderBrush}"
+                    Background="{DynamicResource NavBackgroundBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
                     BorderThickness="0,0,1,0">
                 <StackPanel Margin="0,20,0,0">
                     <RadioButton x:Name="DiagnosticsTab"
@@ -336,14 +336,29 @@
         <Grid x:Name="LoadingOverlay" 
               Grid.RowSpan="2"
               Background="#80000000"
-              Visibility="Collapsed">
-            <Border Background="White"
+              Visibility="Collapsed"
+              Opacity="0">
+            <Border x:Name="LoadingCard"
+                    Background="{DynamicResource LoadingCardBrush}"
                     CornerRadius="10"
                     Padding="40"
                     HorizontalAlignment="Center"
-                    VerticalAlignment="Center">
+                    VerticalAlignment="Center"
+                    RenderTransformOrigin="0.5,0.5">
+                <Border.RenderTransform>
+                    <ScaleTransform x:Name="LoadingCardScale" ScaleX="0.8" ScaleY="0.8"/>
+                </Border.RenderTransform>
                 <StackPanel>
-                    <TextBlock Text="⏳" FontSize="48" HorizontalAlignment="Center" Margin="0,0,0,15"/>
+                    <TextBlock x:Name="LoadingIcon"
+                               Text="⏳"
+                               FontSize="48"
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,15"
+                               RenderTransformOrigin="0.5,0.5">
+                        <TextBlock.RenderTransform>
+                            <RotateTransform x:Name="HourglassRotation" Angle="0"/>
+                        </TextBlock.RenderTransform>
+                    </TextBlock>
                     <TextBlock x:Name="LoadingText"
                                Text="Loading..."
                                FontSize="16"
@@ -351,6 +366,31 @@
                 </StackPanel>
             </Border>
         </Grid>
+
+        <!-- Toast Notification -->
+        <Border x:Name="ToastNotification"
+                Background="#323232"
+                CornerRadius="8"
+                Padding="16,12"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Bottom"
+                Margin="0,0,20,20"
+                Opacity="0"
+                Visibility="Collapsed"
+                Panel.ZIndex="100">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock x:Name="ToastIcon"
+                           Text="✓"
+                           FontSize="14"
+                           Foreground="#4CAF50"
+                           VerticalAlignment="Center"
+                           Margin="0,0,8,0"/>
+                <TextBlock x:Name="ToastText"
+                           FontSize="13"
+                           Foreground="White"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+        </Border>
 
     </Grid>
 </Window>

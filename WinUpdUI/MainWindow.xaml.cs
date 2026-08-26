@@ -398,17 +398,73 @@ namespace WinUpdUI
         {
             LoadingText.Text = message;
             LoadingOverlay.Visibility = Visibility.Visible;
+
+            // Fade in overlay
+            var fadeIn = new System.Windows.Media.Animation.DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(200));
+            LoadingOverlay.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+
+            // Scale up card
+            var scaleX = new System.Windows.Media.Animation.DoubleAnimation(0.8, 1.0, TimeSpan.FromMilliseconds(250))
+            {
+                EasingFunction = new System.Windows.Media.Animation.BackEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut, Amplitude = 0.3 }
+            };
+            var scaleY = new System.Windows.Media.Animation.DoubleAnimation(0.8, 1.0, TimeSpan.FromMilliseconds(250))
+            {
+                EasingFunction = new System.Windows.Media.Animation.BackEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut, Amplitude = 0.3 }
+            };
+            LoadingCardScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty, scaleX);
+            LoadingCardScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty, scaleY);
+
+            // Spin hourglass continuously
+            var spin = new System.Windows.Media.Animation.DoubleAnimation(0, 360, TimeSpan.FromMilliseconds(1200))
+            {
+                RepeatBehavior = System.Windows.Media.Animation.RepeatBehavior.Forever,
+                EasingFunction = new System.Windows.Media.Animation.CubicEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseInOut }
+            };
+            HourglassRotation.BeginAnimation(System.Windows.Media.RotateTransform.AngleProperty, spin);
         }
 
         private void HideLoading()
         {
-            LoadingOverlay.Visibility = Visibility.Collapsed;
+            // Stop spinning
+            HourglassRotation.BeginAnimation(System.Windows.Media.RotateTransform.AngleProperty, null);
+
+            // Fade out overlay
+            var fadeOut = new System.Windows.Media.Animation.DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(200));
+            fadeOut.Completed += (s, e) => LoadingOverlay.Visibility = Visibility.Collapsed;
+            LoadingOverlay.BeginAnimation(UIElement.OpacityProperty, fadeOut);
         }
 
         private void UpdateStatus(string message)
         {
             StatusText.Text = message;
             LastUpdateText.Text = $"Last updated: {DateTime.Now:HH:mm:ss}";
+            ShowToast(message);
+        }
+
+        private async void ShowToast(string message)
+        {
+            ToastText.Text = message;
+            ToastNotification.Visibility = Visibility.Visible;
+
+            // Fade in
+            var fadeIn = new System.Windows.Media.Animation.DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(250));
+            ToastNotification.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+
+            // Slide up from bottom
+            var slideIn = new System.Windows.Media.Animation.DoubleAnimation(20, 0, TimeSpan.FromMilliseconds(250));
+            slideIn.EasingFunction = new System.Windows.Media.Animation.CubicEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut };
+            var translateTransform = new System.Windows.Media.TranslateTransform();
+            ToastNotification.RenderTransform = translateTransform;
+            translateTransform.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, slideIn);
+
+            // Hold
+            await Task.Delay(2500);
+
+            // Fade out
+            var fadeOut = new System.Windows.Media.Animation.DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(400));
+            fadeOut.Completed += (s, e) => ToastNotification.Visibility = Visibility.Collapsed;
+            ToastNotification.BeginAnimation(UIElement.OpacityProperty, fadeOut);
         }
 
         private Brush GetStatusColor(DiagnosticStatus status)
