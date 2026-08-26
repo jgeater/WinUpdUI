@@ -1,0 +1,356 @@
+﻿<Window x:Class="WinUpdUI.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:WinUpdUI"
+        mc:Ignorable="d"
+        Title="Windows Update Diagnostic Tool" 
+        Height="700" Width="1200"
+        Background="{StaticResource BackgroundBrush}"
+        WindowStartupLocation="CenterScreen">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" 
+                Background="{StaticResource HeaderGradientBrush}"
+                Padding="30,20">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel>
+                    <TextBlock Text="Windows Update Diagnostics" 
+                               FontSize="28" 
+                               FontWeight="Bold" 
+                               Foreground="White"/>
+                    <TextBlock x:Name="AdminStatusText"
+                               Text="Running with Administrator Privileges" 
+                               FontSize="12" 
+                               Foreground="#E0E0E0"
+                               Margin="0,5,0,0"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock x:Name="StatusText" 
+                               Text="Ready" 
+                               FontSize="14" 
+                               Foreground="White"
+                               HorizontalAlignment="Right"/>
+                    <TextBlock x:Name="LastUpdateText" 
+                               FontSize="11" 
+                               Foreground="#E0E0E0"
+                               HorizontalAlignment="Right"
+                               Margin="0,3,0,0"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Main Content Area -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="250"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Navigation Sidebar -->
+            <Border Grid.Column="0" 
+                    Background="White"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="0,0,1,0">
+                <StackPanel Margin="0,20,0,0">
+                    <RadioButton x:Name="DiagnosticsTab"
+                                 Style="{StaticResource NavButton}"
+                                 Content="🔍 Diagnostics"
+                                 IsChecked="True"
+                                 Checked="NavigationTab_Checked"/>
+                    <RadioButton x:Name="UpdatesTab"
+                                 Style="{StaticResource NavButton}"
+                                 Content="📦 Available Updates"
+                                 Checked="NavigationTab_Checked"/>
+                    <RadioButton x:Name="PendingTab"
+                                 Style="{StaticResource NavButton}"
+                                 Content="⏳ Pending Updates"
+                                 Checked="NavigationTab_Checked"/>
+                    <RadioButton x:Name="HistoryTab"
+                                 Style="{StaticResource NavButton}"
+                                 Content="📋 Update History"
+                                 Checked="NavigationTab_Checked"/>
+                    <RadioButton x:Name="ConfigTab"
+                                 Style="{StaticResource NavButton}"
+                                 Content="⚙️ Configuration"
+                                 Checked="NavigationTab_Checked"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Content Area -->
+            <ScrollViewer x:Name="MainScrollViewer"
+                         Grid.Column="1" 
+                         VerticalScrollBarVisibility="Auto"
+                         HorizontalScrollBarVisibility="Disabled">
+                <Grid Margin="30">
+                    <!-- Diagnostics Panel -->
+                    <StackPanel x:Name="DiagnosticsPanel" Visibility="Visible">
+                    <TextBlock Text="System Diagnostics" Style="{StaticResource SectionHeader}"/>
+                    <TextBlock Text="Run comprehensive diagnostics to identify Windows Update issues"
+                               Style="{StaticResource SubtleText}"
+                               Margin="0,0,0,20"/>
+
+                    <Button Content="▶️ Run Diagnostics" 
+                            Style="{StaticResource ModernButton}"
+                            Click="RunDiagnostics_Click"
+                            Margin="0,0,0,20"/>
+
+                    <Border Style="{StaticResource CardStyle}" x:Name="DiagnosticsResultsCard" Visibility="Collapsed">
+                        <StackPanel>
+                            <TextBlock Text="Diagnostic Results" 
+                                       FontSize="16" 
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,15"/>
+                            <ListView x:Name="DiagnosticsListView"
+                                     Style="{StaticResource ModernListView}"
+                                     ItemContainerStyle="{StaticResource ModernListViewItem}"
+                                     PreviewMouseWheel="ScrollViewer_PreviewMouseWheel">
+                                <ListView.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding CheckName}" 
+                                                          FontWeight="SemiBold"
+                                                          FontSize="14"/>
+                                                <TextBlock Text="{Binding Message}" 
+                                                          TextWrapping="Wrap"
+                                                          Margin="0,5,0,0"/>
+                                                <TextBlock Text="{Binding Recommendation}" 
+                                                          TextWrapping="Wrap"
+                                                          Foreground="{StaticResource WarningBrush}"
+                                                          FontStyle="Italic"
+                                                          Margin="0,5,0,0"/>
+                                            </StackPanel>
+                                            <Border Grid.Column="1" 
+                                                   Style="{StaticResource StatusBadge}"
+                                                   Background="{Binding StatusColor}">
+                                                <TextBlock Text="{Binding StatusText}" 
+                                                          Foreground="White"
+                                                          FontWeight="SemiBold"
+                                                          FontSize="12"/>
+                                            </Border>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- Updates Panel -->
+                <StackPanel x:Name="UpdatesPanel" Visibility="Collapsed">
+                    <TextBlock Text="Available Updates" Style="{StaticResource SectionHeader}"/>
+                    <TextBlock Text="View all available Windows updates"
+                               Style="{StaticResource SubtleText}"
+                               Margin="0,0,0,20"/>
+
+                    <Button Content="🔄 Check for Updates" 
+                            Style="{StaticResource ModernButton}"
+                            Click="CheckUpdates_Click"
+                            Margin="0,0,0,20"/>
+
+                    <Border Style="{StaticResource CardStyle}" x:Name="UpdatesResultsCard" Visibility="Collapsed">
+                        <StackPanel>
+                            <TextBlock x:Name="UpdatesCountText"
+                                       FontSize="16" 
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,15"/>
+                            <ListView x:Name="UpdatesListView"
+                                     Style="{StaticResource ModernListView}"
+                                     ItemContainerStyle="{StaticResource ModernListViewItem}"
+                                     PreviewMouseWheel="ScrollViewer_PreviewMouseWheel">
+                                <ListView.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Title}" 
+                                                      FontWeight="SemiBold"
+                                                      FontSize="14"
+                                                      TextWrapping="Wrap"/>
+                                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                                <Border Style="{StaticResource StatusBadge}"
+                                                       Background="{Binding CategoryColor}"
+                                                       Margin="0,0,8,0">
+                                                    <TextBlock Text="{Binding MainCategory}" 
+                                                              Foreground="White"
+                                                              FontSize="11"/>
+                                                </Border>
+                                                <Border Style="{StaticResource StatusBadge}"
+                                                       Background="{Binding DownloadStatusColor}">
+                                                    <TextBlock Text="{Binding DownloadStatusText}" 
+                                                              Foreground="White"
+                                                              FontSize="11"/>
+                                                </Border>
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding SizeText}" 
+                                                      Style="{StaticResource SubtleText}"
+                                                      Margin="0,8,0,0"/>
+                                            <TextBlock Text="{Binding KBText}" 
+                                                      Style="{StaticResource SubtleText}"
+                                                      Margin="0,3,0,0"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- Pending Updates Panel -->
+                <StackPanel x:Name="PendingPanel" Visibility="Collapsed">
+                    <TextBlock Text="Pending Updates" Style="{StaticResource SectionHeader}"/>
+                    <TextBlock Text="Updates that are downloaded and ready to install"
+                               Style="{StaticResource SubtleText}"
+                               Margin="0,0,0,20"/>
+
+                    <Button Content="🔄 Refresh Pending" 
+                            Style="{StaticResource ModernButton}"
+                            Click="CheckPending_Click"
+                            Margin="0,0,0,20"/>
+
+                    <Border Style="{StaticResource CardStyle}" x:Name="PendingResultsCard" Visibility="Collapsed">
+                        <StackPanel>
+                            <TextBlock x:Name="PendingCountText"
+                                       FontSize="16" 
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,15"/>
+                            <ListView x:Name="PendingListView"
+                                     Style="{StaticResource ModernListView}"
+                                     ItemContainerStyle="{StaticResource ModernListViewItem}"
+                                     PreviewMouseWheel="ScrollViewer_PreviewMouseWheel">
+                                <ListView.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Title}" 
+                                                      FontWeight="SemiBold"
+                                                      FontSize="14"
+                                                      TextWrapping="Wrap"/>
+                                            <TextBlock Text="{Binding KBText}" 
+                                                      Style="{StaticResource SubtleText}"
+                                                      Margin="0,8,0,0"/>
+                                            <TextBlock Text="✓ Downloaded and ready to install" 
+                                                      Foreground="{StaticResource SuccessBrush}"
+                                                      FontSize="12"
+                                                      Margin="0,5,0,0"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- History Panel -->
+                <StackPanel x:Name="HistoryPanel" Visibility="Collapsed">
+                    <TextBlock Text="Update History" Style="{StaticResource SectionHeader}"/>
+                    <TextBlock Text="View recently installed updates"
+                               Style="{StaticResource SubtleText}"
+                               Margin="0,0,0,20"/>
+
+                    <Button Content="📜 Load History" 
+                            Style="{StaticResource ModernButton}"
+                            Click="LoadHistory_Click"
+                            Margin="0,0,0,20"/>
+
+                    <Border Style="{StaticResource CardStyle}" x:Name="HistoryResultsCard" Visibility="Collapsed">
+                        <StackPanel>
+                            <TextBlock Text="Recent Updates" 
+                                       FontSize="16" 
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,15"/>
+                            <ListView x:Name="HistoryListView"
+                                     Style="{StaticResource ModernListView}"
+                                     ItemContainerStyle="{StaticResource ModernListViewItem}"
+                                     PreviewMouseWheel="ScrollViewer_PreviewMouseWheel">
+                                <ListView.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Title}" 
+                                                          FontWeight="SemiBold"
+                                                          FontSize="14"
+                                                          TextWrapping="Wrap"/>
+                                                <TextBlock Text="{Binding DateText}" 
+                                                          Style="{StaticResource SubtleText}"
+                                                          Margin="0,5,0,0"/>
+                                                <TextBlock Text="{Binding KBText}" 
+                                                          Style="{StaticResource SubtleText}"
+                                                          Margin="0,3,0,0"/>
+                                            </StackPanel>
+                                            <Border Grid.Column="1" 
+                                                   Style="{StaticResource StatusBadge}"
+                                                   Background="{Binding ResultColor}">
+                                                <TextBlock Text="{Binding ResultText}" 
+                                                          Foreground="White"
+                                                          FontWeight="SemiBold"
+                                                          FontSize="12"/>
+                                            </Border>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- Configuration Panel -->
+                <StackPanel x:Name="ConfigPanel" Visibility="Collapsed">
+                    <TextBlock Text="Windows Update Configuration" Style="{StaticResource SectionHeader}"/>
+                    <TextBlock Text="View current Windows Update settings and policies"
+                               Style="{StaticResource SubtleText}"
+                               Margin="0,0,0,20"/>
+
+                    <Button Content="⚙️ Load Configuration" 
+                            Style="{StaticResource ModernButton}"
+                            Click="LoadConfig_Click"
+                            Margin="0,0,0,20"/>
+
+                    <StackPanel x:Name="ConfigContentPanel"/>
+                </StackPanel>
+
+                </Grid>
+            </ScrollViewer>
+        </Grid>
+
+        <!-- Loading Overlay -->
+        <Grid x:Name="LoadingOverlay" 
+              Grid.RowSpan="2"
+              Background="#80000000"
+              Visibility="Collapsed">
+            <Border Background="White"
+                    CornerRadius="10"
+                    Padding="40"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <StackPanel>
+                    <TextBlock Text="⏳" FontSize="48" HorizontalAlignment="Center" Margin="0,0,0,15"/>
+                    <TextBlock x:Name="LoadingText"
+                               Text="Loading..."
+                               FontSize="16"
+                               HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+    </Grid>
+</Window>

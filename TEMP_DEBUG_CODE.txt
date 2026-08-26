@@ -1,0 +1,51 @@
+// TEMPORARY DEBUG CODE - Add this to MainWindow.xaml.cs
+
+// Step 1: Add this helper method anywhere in the MainWindow class:
+
+private void ShowDetailedError(Exception ex, string context)
+{
+	string fullError = $"{context}\n\n" +
+					  $"Message: {ex.Message}\n\n" +
+					  $"Exception Type: {ex.GetType().FullName}\n\n" +
+					  $"Stack Trace:\n{ex.StackTrace}";
+
+	if (ex.InnerException != null)
+	{
+		fullError += $"\n\n=== Inner Exception ===\n" +
+					 $"Message: {ex.InnerException.Message}\n" +
+					 $"Type: {ex.InnerException.GetType().FullName}\n" +
+					 $"Stack: {ex.InnerException.StackTrace}";
+	}
+
+	MessageBox.Show(fullError, "Detailed Error Information", 
+					MessageBoxButton.OK, MessageBoxImage.Error);
+}
+
+
+// Step 2: Find ANY catch block in MainWindow.xaml.cs that shows an error about "configuration"
+// Replace the MessageBox.Show line with:
+//     ShowDetailedError(ex, "Error loading configuration");
+
+// For example, if you find this:
+/*
+catch (Exception ex)
+{
+	MessageBox.Show($"Error loading configuration: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+}
+*/
+
+// Change it to this:
+/*
+catch (Exception ex)
+{
+	ShowDetailedError(ex, "Error loading configuration");
+}
+*/
+
+
+// Step 3: After adding the method, search your MainWindow.xaml.cs for:
+//    - Any method containing "Config" and "Click" in the name
+//    - OR search for: MessageBox.Show
+//    - Look for catch blocks and replace their MessageBox.Show with ShowDetailedError
+
+// Step 4: Run the app, click "Load Configuration", and copy ALL the text from the error dialog
