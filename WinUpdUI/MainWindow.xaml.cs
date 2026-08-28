@@ -354,6 +354,7 @@ namespace WinUpdUI
                         Margin = new Thickness(10, 3, 0, 3),
                         TextWrapping = TextWrapping.Wrap
                     };
+                    singleLine.SetResourceReference(TextBlock.ForegroundProperty, "TextPrimaryBrush");
                     section.Children.Add(singleLine);
                 }
                 else
@@ -367,6 +368,7 @@ namespace WinUpdUI
                         Text = item.Key + ":",
                         FontWeight = FontWeights.Medium
                     };
+                    keyText.SetResourceReference(TextBlock.ForegroundProperty, "TextPrimaryBrush");
                     Grid.SetColumn(keyText, 0);
                     grid.Children.Add(keyText);
 
@@ -374,8 +376,8 @@ namespace WinUpdUI
                     {
                         Text = item.Value,
                         TextWrapping = TextWrapping.Wrap,
-                        Foreground = FindResource("TextSecondaryBrush") as Brush
                     };
+                    valueText.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
                     Grid.SetColumn(valueText, 1);
                     grid.Children.Add(valueText);
 

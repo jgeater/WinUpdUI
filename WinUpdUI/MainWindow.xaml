@@ -10,6 +10,13 @@
         Background="{DynamicResource BackgroundBrush}"
         WindowStartupLocation="CenterScreen">
 
+    <Window.Resources>
+        <!-- Implicit style: all TextBlocks without an explicit Foreground inherit the theme colour -->
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        </Style>
+    </Window.Resources>
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -117,6 +124,7 @@
                             <ListView x:Name="DiagnosticsListView"
                                      Style="{StaticResource ModernListView}"
                                      ItemContainerStyle="{StaticResource ModernListViewItem}"
+                                     Foreground="{DynamicResource TextPrimaryBrush}"
                                      PreviewMouseWheel="ScrollViewer_PreviewMouseWheel">
                                 <ListView.ItemTemplate>
                                     <DataTemplate>
@@ -175,6 +183,7 @@
                             <ListView x:Name="UpdatesListView"
                                      Style="{StaticResource ModernListView}"
                                      ItemContainerStyle="{StaticResource ModernListViewItem}"
+                                     Foreground="{DynamicResource TextPrimaryBrush}"
                                      PreviewMouseWheel="ScrollViewer_PreviewMouseWheel">
                                 <ListView.ItemTemplate>
                                     <DataTemplate>
@@ -233,6 +242,7 @@
                             <ListView x:Name="PendingListView"
                                      Style="{StaticResource ModernListView}"
                                      ItemContainerStyle="{StaticResource ModernListViewItem}"
+                                     Foreground="{DynamicResource TextPrimaryBrush}"
                                      PreviewMouseWheel="ScrollViewer_PreviewMouseWheel">
                                 <ListView.ItemTemplate>
                                     <DataTemplate>
@@ -277,6 +287,7 @@
                             <ListView x:Name="HistoryListView"
                                      Style="{StaticResource ModernListView}"
                                      ItemContainerStyle="{StaticResource ModernListViewItem}"
+                                     Foreground="{DynamicResource TextPrimaryBrush}"
                                      PreviewMouseWheel="ScrollViewer_PreviewMouseWheel">
                                 <ListView.ItemTemplate>
                                     <DataTemplate>
