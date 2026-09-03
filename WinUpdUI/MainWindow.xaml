@@ -94,6 +94,10 @@
                                  Style="{StaticResource NavButton}"
                                  Content="⚙️ Configuration"
                                  Checked="NavigationTab_Checked"/>
+                    <RadioButton x:Name="SettingsTab"
+                                 Style="{StaticResource NavButton}"
+                                 Content="⚙️ Settings"
+                                 Checked="NavigationTab_Checked"/>
                 </StackPanel>
             </Border>
 
@@ -292,31 +296,50 @@
                                 <ListView.ItemTemplate>
                                     <DataTemplate>
                                         <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <StackPanel>
-                                                <TextBlock Text="{Binding Title}" 
-                                                          FontWeight="SemiBold"
-                                                          FontSize="14"
-                                                          TextWrapping="Wrap"/>
-                                                <TextBlock Text="{Binding DateText}" 
-                                                          Style="{StaticResource SubtleText}"
-                                                          Margin="0,5,0,0"/>
-                                                <TextBlock Text="{Binding KBText}" 
-                                                          Style="{StaticResource SubtleText}"
-                                                          Margin="0,3,0,0"/>
-                                            </StackPanel>
-                                            <Border Grid.Column="1" 
-                                                   Style="{StaticResource StatusBadge}"
-                                                   Background="{Binding ResultColor}">
-                                                <TextBlock Text="{Binding ResultText}" 
-                                                          Foreground="White"
-                                                          FontWeight="SemiBold"
-                                                          FontSize="12"/>
-                                            </Border>
+                                            <!-- Header row -->
+                                            <TextBlock x:Name="HeaderText"
+                                                      Text="{Binding Title}"
+                                                      FontSize="16"
+                                                      FontWeight="SemiBold"
+                                                      Foreground="{DynamicResource TextPrimaryBrush}"
+                                                      Margin="0,10,0,5"
+                                                      Visibility="Collapsed"/>
+
+                                            <!-- Regular item row -->
+                                            <Grid x:Name="ItemGrid" Visibility="Visible">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding Title}" 
+                                                              FontWeight="SemiBold"
+                                                              FontSize="14"
+                                                              TextWrapping="Wrap"/>
+                                                    <TextBlock Text="{Binding DateText}" 
+                                                              Style="{StaticResource SubtleText}"
+                                                              Margin="0,5,0,0"/>
+                                                    <TextBlock Text="{Binding KBText}" 
+                                                              Style="{StaticResource SubtleText}"
+                                                              Margin="0,3,0,0"/>
+                                                </StackPanel>
+                                                <Border Grid.Column="1" 
+                                                       Style="{StaticResource StatusBadge}"
+                                                       Background="{Binding ResultColor}">
+                                                    <TextBlock Text="{Binding ResultText}" 
+                                                              Foreground="White"
+                                                              FontWeight="SemiBold"
+                                                              FontSize="12"/>
+                                                </Border>
+                                            </Grid>
                                         </Grid>
+
+                                        <DataTemplate.Triggers>
+                                            <DataTrigger Binding="{Binding IsHeader}" Value="True">
+                                                <Setter TargetName="HeaderText" Property="Visibility" Value="Visible"/>
+                                                <Setter TargetName="ItemGrid" Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </DataTemplate.Triggers>
                                     </DataTemplate>
                                 </ListView.ItemTemplate>
                             </ListView>
@@ -337,6 +360,39 @@
                             Margin="0,0,0,20"/>
 
                     <StackPanel x:Name="ConfigContentPanel"/>
+                </StackPanel>
+
+                <!-- Settings Panel -->
+                <StackPanel x:Name="SettingsPanel" Visibility="Collapsed">
+                    <TextBlock Text="Settings" Style="{StaticResource SectionHeader}"/>
+                    <TextBlock Text="Customize application behavior and appearance"
+                               Style="{StaticResource SubtleText}"
+                               Margin="0,0,0,20"/>
+
+                    <!-- Theme Selection -->
+                    <Border Style="{StaticResource CardStyle}">
+                        <StackPanel>
+                            <TextBlock Text="Theme" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,15"/>
+
+                            <RadioButton x:Name="ThemeSystemRadio"
+                                        GroupName="Theme"
+                                        Content="System (Follow Windows Settings)"
+                                        Checked="ThemeRadio_Changed"
+                                        Margin="0,0,0,10"/>
+
+                            <RadioButton x:Name="ThemeLightRadio"
+                                        GroupName="Theme"
+                                        Content="Light Mode"
+                                        Checked="ThemeRadio_Changed"
+                                        Margin="0,0,0,10"/>
+
+                            <RadioButton x:Name="ThemeDarkRadio"
+                                        GroupName="Theme"
+                                        Content="Dark Mode"
+                                        Checked="ThemeRadio_Changed"
+                                        Margin="0,0,0,10"/>
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
 
                 </Grid>

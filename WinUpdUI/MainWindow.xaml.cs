@@ -94,7 +94,7 @@ namespace WinUpdUI
         {
             // Guard against event firing during InitializeComponent before panels are created
             if (DiagnosticsPanel == null || UpdatesPanel == null || PendingPanel == null || 
-                HistoryPanel == null || ConfigPanel == null)
+                HistoryPanel == null || ConfigPanel == null || SettingsPanel == null)
                 return;
 
             if (sender is RadioButton radioButton)
@@ -104,6 +104,7 @@ namespace WinUpdUI
                 PendingPanel.Visibility = Visibility.Collapsed;
                 HistoryPanel.Visibility = Visibility.Collapsed;
                 ConfigPanel.Visibility = Visibility.Collapsed;
+                SettingsPanel.Visibility = Visibility.Collapsed;
 
                 if (radioButton == DiagnosticsTab)
                     DiagnosticsPanel.Visibility = Visibility.Visible;
@@ -115,6 +116,11 @@ namespace WinUpdUI
                     HistoryPanel.Visibility = Visibility.Visible;
                 else if (radioButton == ConfigTab)
                     ConfigPanel.Visibility = Visibility.Visible;
+                else if (radioButton == SettingsTab)
+                {
+                    SettingsPanel.Visibility = Visibility.Visible;
+                    LoadThemePreference();  // Sync UI with current theme setting
+                }
             }
         }
 
@@ -239,22 +245,68 @@ namespace WinUpdUI
                 var history = await Task.Run(() =>
                 {
                     var manager = new WindowsUpdateManager();
-                    return manager.GetUpdateHistory(20);
+                    return manager.GetUpdateHistory(40);
                 });
 
-                var displayHistory = history.Select(h => new HistoryDisplayItem
+                // Deduplicate by KB number (or title+date if no KB)
+                var seen = new HashSet<string>();
+                var deduplicatedHistory = new List<dynamic>();
+
+                foreach (var h in history)
                 {
-                    Title = h.Title,
-                    DateText = h.Date.ToString("yyyy-MM-dd HH:mm"),
-                    KBText = ExtractKBFromTitle(h.Title),
-                    ResultText = h.ResultCode,
-                    ResultColor = GetResultColor(h.ResultCode)
-                }).ToList();
+                    var key = ExtractKBFromTitle(h.Title);
+                    if (string.IsNullOrEmpty(key))
+                        key = $"{h.Title}_{h.Date:yyyyMMdd}";
+
+                    if (seen.Add(key))
+                        deduplicatedHistory.Add(h);
+                }
+
+                // Separate into Defender and non-Defender updates
+                var defenderUpdates = deduplicatedHistory
+                    .Where(h => h.Title.IndexOf("Defender", StringComparison.OrdinalIgnoreCase) >= 0)
+                    .Take(10)
+                    .ToList();
+
+                var nonDefenderUpdates = deduplicatedHistory
+                    .Where(h => h.Title.IndexOf("Defender", StringComparison.OrdinalIgnoreCase) < 0)
+                    .Take(10)
+                    .ToList();
+
+                var displayHistory = new List<HistoryDisplayItem>();
+
+                // Add non-Defender updates first
+                if (nonDefenderUpdates.Count > 0)
+                {
+                    displayHistory.Add(new HistoryDisplayItem { IsHeader = true, Title = "Other Updates" });
+                    displayHistory.AddRange(nonDefenderUpdates.Select(h => new HistoryDisplayItem
+                    {
+                        Title = h.Title,
+                        DateText = h.Date.ToString("yyyy-MM-dd HH:mm"),
+                        KBText = ExtractKBFromTitle(h.Title),
+                        ResultText = h.ResultCode,
+                        ResultColor = GetResultColor(h.ResultCode)
+                    }));
+                }
+
+                // Add Defender updates second
+                if (defenderUpdates.Count > 0)
+                {
+                    displayHistory.Add(new HistoryDisplayItem { IsHeader = true, Title = "Windows Defender Updates" });
+                    displayHistory.AddRange(defenderUpdates.Select(h => new HistoryDisplayItem
+                    {
+                        Title = h.Title,
+                        DateText = h.Date.ToString("yyyy-MM-dd HH:mm"),
+                        KBText = ExtractKBFromTitle(h.Title),
+                        ResultText = h.ResultCode,
+                        ResultColor = GetResultColor(h.ResultCode)
+                    }));
+                }
 
                 HistoryListView.ItemsSource = displayHistory;
                 HistoryResultsCard.Visibility = Visibility.Visible;
 
-                UpdateStatus($"Loaded {history.Count} history entries");
+                UpdateStatus($"Loaded {deduplicatedHistory.Count} unique history entries ({nonDefenderUpdates.Count} other, {defenderUpdates.Count} Defender)");
             }
             catch (Exception ex)
             {
@@ -544,6 +596,57 @@ namespace WinUpdUI
             var match = System.Text.RegularExpressions.Regex.Match(title, @"KB\d+");
             return match.Success ? match.Value : "";
         }
+
+        private bool _isLoadingThemePreference = false;
+
+        private void ThemeRadio_Changed(object sender, RoutedEventArgs e)
+        {
+            // Don't save when we're just loading the preference
+            if (_isLoadingThemePreference)
+                return;
+
+            if (ThemeSystemRadio.IsChecked == true)
+            {
+                App.SaveThemePreference("System");
+                var app = Application.Current as App;
+                app?.LoadSystemTheme();
+            }
+            else if (ThemeLightRadio.IsChecked == true)
+            {
+                App.SaveThemePreference("Light");
+                var app = Application.Current as App;
+                app?.ApplyTheme(SystemTheme.Light);
+            }
+            else if (ThemeDarkRadio.IsChecked == true)
+            {
+                App.SaveThemePreference("Dark");
+                var app = Application.Current as App;
+                app?.ApplyTheme(SystemTheme.Dark);
+            }
+        }
+
+        private void LoadThemePreference()
+        {
+            try
+            {
+                _isLoadingThemePreference = true;
+
+                var themePref = App.LoadThemePreference() ?? "System";
+
+                ThemeSystemRadio.IsChecked = (themePref == "System");
+                ThemeLightRadio.IsChecked = (themePref == "Light");
+                ThemeDarkRadio.IsChecked = (themePref == "Dark");
+            }
+            finally
+            {
+                _isLoadingThemePreference = false;
+            }
+        }
+
+        private void SaveThemePreference(string theme)
+        {
+            App.SaveThemePreference(theme);
+        }
     }
 
     public class DiagnosticDisplayItem
@@ -570,6 +673,7 @@ namespace WinUpdUI
 
     public class HistoryDisplayItem
     {
+        public bool IsHeader { get; set; }
         public string Title { get; set; }
         public string DateText { get; set; }
         public string KBText { get; set; }
