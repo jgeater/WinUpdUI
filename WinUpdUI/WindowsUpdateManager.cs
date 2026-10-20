@@ -6,11 +6,20 @@ using WUApiLib;
 
 namespace WinUpdUI
 {
-    /// <summary>
-    /// Manages Windows Update operations including searching, configuration, and diagnostics
-    /// </summary>
     public class WindowsUpdateManager
     {
+        /// <summary>
+        /// Categorizes installed updates by type
+        /// </summary>
+        public enum UpdateCategory
+        {
+            FeatureUpdate,
+            QualityUpdate,
+            DriverUpdate,
+            DefinitionUpdate,
+            Other
+        }
+
         private readonly UpdateSession _updateSession;
         private readonly IUpdateSearcher _updateSearcher;
 
@@ -520,6 +529,57 @@ namespace WinUpdUI
             }
 
             return updates;
+        }
+
+        /// <summary>
+        /// Categorizes an update history entry based on its title and description
+        /// </summary>
+        public static UpdateCategory CategorizeUpdate(string title, string description = "")
+        {
+            if (string.IsNullOrEmpty(title))
+                return UpdateCategory.Other;
+
+            string lowerTitle = title.ToLower();
+            string lowerDesc = (description ?? "").ToLower();
+
+            // Definition Updates: MUST be checked FIRST since they can overlap with other categories
+            // Defender, antivirus, or definition-related keywords
+            if (lowerTitle.Contains("definition") || lowerTitle.Contains("defender") || 
+                lowerTitle.Contains("antivirus") || lowerTitle.Contains("anti-virus") ||
+                lowerTitle.Contains("malware") || lowerTitle.Contains("security intelligence") ||
+                lowerTitle.Contains("microsoft defender") || lowerTitle.Contains("windows defender") ||
+                lowerTitle.Contains("definition update"))
+            {
+                return UpdateCategory.DefinitionUpdate;
+            }
+
+            // Driver Updates: Contains "driver" keyword
+            if (lowerTitle.Contains("driver"))
+            {
+                return UpdateCategory.DriverUpdate;
+            }
+
+            // Feature Updates: Version/build numbers like "26H2", "23H2", "22H2" or explicit "Feature"
+            if (lowerTitle.Contains("feature") || 
+                System.Text.RegularExpressions.Regex.IsMatch(title, @"\d+H\d+") ||
+                System.Text.RegularExpressions.Regex.IsMatch(title, @"version\s+\d+\.\d+") ||
+                lowerTitle.Contains("major update") || lowerTitle.Contains("version update") ||
+                lowerTitle.Contains("feature update"))
+            {
+                return UpdateCategory.FeatureUpdate;
+            }
+
+            // Quality Updates: KB articles or typical patch keywords
+            if (System.Text.RegularExpressions.Regex.IsMatch(title, @"KB\d+") ||
+                lowerTitle.Contains("cumulative") || lowerTitle.Contains("security") ||
+                lowerTitle.Contains("quality") || lowerTitle.Contains("patch") ||
+                lowerTitle.Contains("bugfix"))
+            {
+                return UpdateCategory.QualityUpdate;
+            }
+
+            // Default to Other
+            return UpdateCategory.Other;
         }
     }
 

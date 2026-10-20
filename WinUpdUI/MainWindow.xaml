@@ -283,67 +283,79 @@
                             Margin="0,0,0,20"/>
 
                     <Border Style="{StaticResource CardStyle}" x:Name="HistoryResultsCard" Visibility="Collapsed">
-                        <StackPanel>
-                            <TextBlock Text="Recent Updates" 
-                                       FontSize="16" 
-                                       FontWeight="SemiBold"
-                                       Margin="0,0,0,15"/>
-                            <ListView x:Name="HistoryListView"
-                                     Style="{StaticResource ModernListView}"
-                                     ItemContainerStyle="{StaticResource ModernListViewItem}"
-                                     Foreground="{DynamicResource TextPrimaryBrush}"
-                                     PreviewMouseWheel="ScrollViewer_PreviewMouseWheel">
-                                <ListView.ItemTemplate>
-                                    <DataTemplate>
-                                        <Grid>
-                                            <!-- Header row -->
-                                            <TextBlock x:Name="HeaderText"
-                                                      Text="{Binding Title}"
-                                                      FontSize="16"
-                                                      FontWeight="SemiBold"
-                                                      Foreground="{DynamicResource TextPrimaryBrush}"
-                                                      Margin="0,10,0,5"
-                                                      Visibility="Collapsed"/>
-
-                                            <!-- Regular item row -->
-                                            <Grid x:Name="ItemGrid" Visibility="Visible">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                </Grid.ColumnDefinitions>
-                                                <StackPanel>
-                                                    <TextBlock Text="{Binding Title}" 
-                                                              FontWeight="SemiBold"
-                                                              FontSize="14"
-                                                              TextWrapping="Wrap"/>
-                                                    <TextBlock Text="{Binding DateText}" 
-                                                              Style="{StaticResource SubtleText}"
-                                                              Margin="0,5,0,0"/>
-                                                    <TextBlock Text="{Binding KBText}" 
-                                                              Style="{StaticResource SubtleText}"
-                                                              Margin="0,3,0,0"/>
-                                                </StackPanel>
-                                                <Border Grid.Column="1" 
-                                                       Style="{StaticResource StatusBadge}"
-                                                       Background="{Binding ResultColor}">
-                                                    <TextBlock Text="{Binding ResultText}" 
-                                                              Foreground="White"
-                                                              FontWeight="SemiBold"
-                                                              FontSize="12"/>
-                                                </Border>
-                                            </Grid>
-                                        </Grid>
-
-                                        <DataTemplate.Triggers>
-                                            <DataTrigger Binding="{Binding IsHeader}" Value="True">
-                                                <Setter TargetName="HeaderText" Property="Visibility" Value="Visible"/>
-                                                <Setter TargetName="ItemGrid" Property="Visibility" Value="Collapsed"/>
-                                            </DataTrigger>
-                                        </DataTemplate.Triggers>
-                                    </DataTemplate>
-                                </ListView.ItemTemplate>
-                            </ListView>
-                        </StackPanel>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" PreviewMouseWheel="ScrollViewer_PreviewMouseWheel">
+                            <StackPanel>
+                                <TextBlock Text="Recent Updates" 
+                                           FontSize="16" 
+                                           FontWeight="SemiBold"
+                                           Margin="0,0,0,15"/>
+                                <ItemsControl x:Name="HistoryListView" ItemsSource="{Binding}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Expander Margin="0,0,0,10">
+                                                <Expander.Header>
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Text="{Binding CategoryName}" 
+                                                                   FontSize="14" 
+                                                                   FontWeight="SemiBold"
+                                                                   VerticalAlignment="Center"/>
+                                                        <Border Grid.Column="1" 
+                                                                Padding="8,4" 
+                                                                CornerRadius="3"
+                                                                Background="{DynamicResource AccentBrush}"
+                                                                Margin="10,0,0,0">
+                                                            <TextBlock Text="{Binding Count}" 
+                                                                       Foreground="White" 
+                                                                       FontWeight="SemiBold"
+                                                                       FontSize="12"/>
+                                                        </Border>
+                                                    </Grid>
+                                                </Expander.Header>
+                                                <ItemsControl ItemsSource="{Binding Updates}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Border Margin="0,0,0,10" Padding="15,0,0,0">
+                                                                <Grid>
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="*"/>
+                                                                        <ColumnDefinition Width="Auto"/>
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <StackPanel>
+                                                                        <TextBlock Text="{Binding Title}" 
+                                                                                  FontWeight="SemiBold"
+                                                                                  FontSize="14"
+                                                                                  TextWrapping="Wrap"/>
+                                                                        <TextBlock Text="{Binding DateText}" 
+                                                                                  Style="{StaticResource SubtleText}"
+                                                                                  Margin="0,5,0,0"/>
+                                                                        <TextBlock Text="{Binding KBText}" 
+                                                                                  Style="{StaticResource SubtleText}"
+                                                                                  Margin="0,3,0,0"/>
+                                                                    </StackPanel>
+                                                                    <Border Grid.Column="1" 
+                                                                           Style="{StaticResource StatusBadge}"
+                                                                           Background="{Binding ResultColor}"
+                                                                           VerticalAlignment="Top">
+                                                                        <TextBlock Text="{Binding ResultText}" 
+                                                                                  Foreground="White"
+                                                                                  FontWeight="SemiBold"
+                                                                                  FontSize="12"/>
+                                                                    </Border>
+                                                                </Grid>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </Expander>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </ScrollViewer>
                     </Border>
                 </StackPanel>
 

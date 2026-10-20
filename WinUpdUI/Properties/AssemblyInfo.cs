@@ -49,4 +49,4 @@ using System.Windows;
 //      Revision
 //
 [assembly: AssemblyVersion("1.2026.09.03")]
-[assembly: AssemblyFileVersion("1.2026.09.03")]
+[assembly: AssemblyFileVersion("1.2026.10.20")]

@@ -245,7 +245,7 @@ namespace WinUpdUI
                 var history = await Task.Run(() =>
                 {
                     var manager = new WindowsUpdateManager();
-                    return manager.GetUpdateHistory(40);
+                    return manager.GetUpdateHistory(300);
                 });
 
                 // Deduplicate by KB number (or title+date if no KB)
@@ -262,51 +262,61 @@ namespace WinUpdUI
                         deduplicatedHistory.Add(h);
                 }
 
-                // Separate into Defender and non-Defender updates
-                var defenderUpdates = deduplicatedHistory
-                    .Where(h => h.Title.IndexOf("Defender", StringComparison.OrdinalIgnoreCase) >= 0)
-                    .Take(10)
-                    .ToList();
-
-                var nonDefenderUpdates = deduplicatedHistory
-                    .Where(h => h.Title.IndexOf("Defender", StringComparison.OrdinalIgnoreCase) < 0)
-                    .Take(10)
-                    .ToList();
-
-                var displayHistory = new List<HistoryDisplayItem>();
-
-                // Add non-Defender updates first
-                if (nonDefenderUpdates.Count > 0)
+                // Group updates by category
+                var categorizedGroups = new Dictionary<string, List<dynamic>>();
+                var categoryOrder = new[]
                 {
-                    displayHistory.Add(new HistoryDisplayItem { IsHeader = true, Title = "Other Updates" });
-                    displayHistory.AddRange(nonDefenderUpdates.Select(h => new HistoryDisplayItem
-                    {
-                        Title = h.Title,
-                        DateText = h.Date.ToString("yyyy-MM-dd HH:mm"),
-                        KBText = ExtractKBFromTitle(h.Title),
-                        ResultText = h.ResultCode,
-                        ResultColor = GetResultColor(h.ResultCode)
-                    }));
+                    (WindowsUpdateManager.UpdateCategory.FeatureUpdate, "Feature Updates"),
+                    (WindowsUpdateManager.UpdateCategory.QualityUpdate, "Quality Updates"),
+                    (WindowsUpdateManager.UpdateCategory.DriverUpdate, "Driver Updates"),
+                    (WindowsUpdateManager.UpdateCategory.DefinitionUpdate, "Definition Updates"),
+                    (WindowsUpdateManager.UpdateCategory.Other, "Other Updates")
+                };
+
+                // Initialize category lists
+                foreach (var (_, categoryName) in categoryOrder)
+                {
+                    categorizedGroups[categoryName] = new List<dynamic>();
                 }
 
-                // Add Defender updates second
-                if (defenderUpdates.Count > 0)
+                // Categorize each update
+                foreach (var update in deduplicatedHistory)
                 {
-                    displayHistory.Add(new HistoryDisplayItem { IsHeader = true, Title = "Windows Defender Updates" });
-                    displayHistory.AddRange(defenderUpdates.Select(h => new HistoryDisplayItem
-                    {
-                        Title = h.Title,
-                        DateText = h.Date.ToString("yyyy-MM-dd HH:mm"),
-                        KBText = ExtractKBFromTitle(h.Title),
-                        ResultText = h.ResultCode,
-                        ResultColor = GetResultColor(h.ResultCode)
-                    }));
+                    var category = WindowsUpdateManager.CategorizeUpdate(update.Title, update.Description);
+                    var categoryName = categoryOrder.First(x => x.Item1 == category).Item2;
+                    categorizedGroups[categoryName].Add(update);
                 }
 
-                HistoryListView.ItemsSource = displayHistory;
+                // Create display groups - limit each category to 5 updates
+                var categoryGroups = new List<CategoryGroup>();
+                foreach (var (_, categoryName) in categoryOrder)
+                {
+                    var updates = categorizedGroups[categoryName].Take(5).ToList();
+                    if (updates.Count > 0)
+                    {
+                        var group = new CategoryGroup
+                        {
+                            CategoryName = categoryName,
+                            Count = updates.Count,
+                            Updates = updates.Select(h => new HistoryDisplayItem
+                            {
+                                Title = h.Title,
+                                DateText = h.Date.ToString("yyyy-MM-dd HH:mm"),
+                                KBText = ExtractKBFromTitle(h.Title),
+                                ResultText = h.ResultCode,
+                                ResultColor = GetResultColor(h.ResultCode)
+                            }).ToList()
+                        };
+                        categoryGroups.Add(group);
+                    }
+                }
+
+                HistoryListView.ItemsSource = categoryGroups;
                 HistoryResultsCard.Visibility = Visibility.Visible;
 
-                UpdateStatus($"Loaded {deduplicatedHistory.Count} unique history entries ({nonDefenderUpdates.Count} other, {defenderUpdates.Count} Defender)");
+                var totalCount = categoryGroups.Sum(g => g.Count);
+                var counts = string.Join(", ", categoryGroups.Select(g => $"{g.Count} {g.CategoryName}"));
+                UpdateStatus($"Loaded {totalCount} recent history entries ({counts})");
             }
             catch (Exception ex)
             {
@@ -669,6 +679,13 @@ namespace WinUpdUI
         public string DownloadStatusText { get; set; }
         public Brush DownloadStatusColor { get; set; }
         public bool ShowDownloadStatus { get; set; }
+    }
+
+    public class CategoryGroup
+    {
+        public string CategoryName { get; set; }
+        public int Count { get; set; }
+        public List<HistoryDisplayItem> Updates { get; set; } = new List<HistoryDisplayItem>();
     }
 
     public class HistoryDisplayItem
