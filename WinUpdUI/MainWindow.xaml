@@ -15,6 +15,57 @@
         <Style TargetType="TextBlock">
             <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
         </Style>
+
+        <Style x:Key="HistoryExpanderStyle" TargetType="Expander">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Expander">
+                        <StackPanel>
+                            <ToggleButton x:Name="HeaderSite"
+                                          IsChecked="{Binding IsExpanded, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                          Background="Transparent"
+                                          BorderBrush="Transparent"
+                                          BorderThickness="0"
+                                          Padding="0"
+                                          HorizontalContentAlignment="Stretch"
+                                          Foreground="{TemplateBinding Foreground}"
+                                          Cursor="Hand"
+                                          Focusable="False">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock x:Name="ChevronIcon"
+                                               Text="▶"
+                                               Foreground="{DynamicResource AccentBrush}"
+                                               FontSize="13"
+                                               FontWeight="SemiBold"
+                                               VerticalAlignment="Center"
+                                               Margin="0,0,8,0"/>
+                                    <ContentPresenter Grid.Column="1"
+                                                      ContentSource="Header"
+                                                      VerticalAlignment="Center"/>
+                                </Grid>
+                            </ToggleButton>
+                            <ContentPresenter x:Name="ExpandSite"
+                                              Visibility="Collapsed"
+                                              Margin="20,8,0,0"/>
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsExpanded" Value="True">
+                                <Setter TargetName="ChevronIcon" Property="Text" Value="▼"/>
+                                <Setter TargetName="ExpandSite" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.6"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Grid>
@@ -292,7 +343,9 @@
                                 <ItemsControl x:Name="HistoryListView" ItemsSource="{Binding}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Expander Margin="0,0,0,10">
+                                            <Expander Margin="0,0,0,10"
+                                                      Style="{StaticResource HistoryExpanderStyle}"
+                                                      Foreground="{DynamicResource TextPrimaryBrush}">
                                                 <Expander.Header>
                                                     <Grid>
                                                         <Grid.ColumnDefinitions>
@@ -302,6 +355,7 @@
                                                         <TextBlock Text="{Binding CategoryName}" 
                                                                    FontSize="14" 
                                                                    FontWeight="SemiBold"
+                                                                   Foreground="{DynamicResource TextPrimaryBrush}"
                                                                    VerticalAlignment="Center"/>
                                                         <Border Grid.Column="1" 
                                                                 Padding="8,4" 
@@ -328,6 +382,7 @@
                                                                         <TextBlock Text="{Binding Title}" 
                                                                                   FontWeight="SemiBold"
                                                                                   FontSize="14"
+                                                                                  Foreground="{DynamicResource TextPrimaryBrush}"
                                                                                   TextWrapping="Wrap"/>
                                                                         <TextBlock Text="{Binding DateText}" 
                                                                                   Style="{StaticResource SubtleText}"
@@ -389,18 +444,21 @@
                             <RadioButton x:Name="ThemeSystemRadio"
                                         GroupName="Theme"
                                         Content="System (Follow Windows Settings)"
+                                        Foreground="{DynamicResource TextPrimaryBrush}"
                                         Checked="ThemeRadio_Changed"
                                         Margin="0,0,0,10"/>
 
                             <RadioButton x:Name="ThemeLightRadio"
                                         GroupName="Theme"
                                         Content="Light Mode"
+                                        Foreground="{DynamicResource TextPrimaryBrush}"
                                         Checked="ThemeRadio_Changed"
                                         Margin="0,0,0,10"/>
 
                             <RadioButton x:Name="ThemeDarkRadio"
                                         GroupName="Theme"
                                         Content="Dark Mode"
+                                        Foreground="{DynamicResource TextPrimaryBrush}"
                                         Checked="ThemeRadio_Changed"
                                         Margin="0,0,0,10"/>
                         </StackPanel>
