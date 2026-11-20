@@ -220,11 +220,38 @@ namespace WinUpdUI
                         AutoUpdateEnabled = state == "Running";
                     }
                 }
+
+                var automaticUpdates = new WUApiLib.AutomaticUpdates();
+                var results = automaticUpdates.Results;
+
+                // Newer Windows versions no longer populate the legacy result registry keys.
+                string installationTime = FormatWuaTime(results.LastInstallationSuccessDate);
+                string searchTime = FormatWuaTime(results.LastSearchSuccessDate);
+
+                if (!string.IsNullOrEmpty(installationTime))
+                    LastSuccessTime = installationTime;
+
+                if (!string.IsNullOrEmpty(searchTime))
+                    LastSearchSuccessTime = searchTime;
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error getting WUA settings: {ex.Message}");
             }
+        }
+
+        private static string FormatWuaTime(DateTime value)
+        {
+            // COM uses 1601-01-01 when the result has never been recorded.
+            if (value.Year <= 1601)
+                return null;
+
+            // The WUA COM API returns UTC as an Unspecified DateTime.
+            DateTime utcTime = value.Kind == DateTimeKind.Local
+                ? value.ToUniversalTime()
+                : DateTime.SpecifyKind(value, DateTimeKind.Utc);
+
+            return utcTime.ToLocalTime().ToString("g");
         }
 
         private string GetAutoUpdateOptionText(int option)
