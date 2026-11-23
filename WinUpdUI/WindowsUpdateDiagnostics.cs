@@ -80,10 +80,9 @@ namespace WinUpdUI
                     {
                         string startMode = GetServiceStartMode(serviceName);
 
-                        // Manual or trigger-started services may be stopped until Windows Update needs them.
-                        // A stopped service is only a warning when it is disabled or should start automatically.
+                        // A stopped service is normal for Manual and Trigger Start modes.
+                        // Only an explicitly disabled service is actionable for this diagnostic.
                         bool isDisabled = startMode.Equals("Disabled", StringComparison.OrdinalIgnoreCase);
-                        bool shouldStartAutomatically = startMode.Equals("Auto", StringComparison.OrdinalIgnoreCase);
 
                         if (isDisabled)
                         {
@@ -93,16 +92,6 @@ namespace WinUpdUI
                                 Status = DiagnosticStatus.Warning,
                                 Message = $"{displayName} is stopped and disabled",
                                 Recommendation = $"Enable the service using: sc config {serviceName} start= demand"
-                            });
-                        }
-                        else if (shouldStartAutomatically)
-                        {
-                            _results.Add(new DiagnosticResult
-                            {
-                                CheckName = displayName,
-                                Status = DiagnosticStatus.Warning,
-                                Message = $"{displayName} is stopped (Startup: Automatic)",
-                                Recommendation = $"Start the service using: net start {serviceName}"
                             });
                         }
                         else
@@ -470,7 +459,7 @@ namespace WinUpdUI
             {
                 var blockingSettings = new List<string>();
 
-                // Check for feature update deferrals
+                // Check Windows Update policy deferrals and pauses.
                 using (var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
                 using (var key = baseKey.OpenSubKey(@"SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate"))
                 {
@@ -480,13 +469,19 @@ namespace WinUpdUI
                         if (deferFeatureUpdates != null && Convert.ToInt32(deferFeatureUpdates) == 1)
                         {
                             var deferDays = key.GetValue("DeferFeatureUpdatesPeriodInDays");
-                            blockingSettings.Add($"Feature updates deferred by {deferDays ?? "unknown"} days");
+                            blockingSettings.Add($"Feature updates deferred by policy by {deferDays ?? "unknown"} days");
                         }
 
                         var pauseFeatureUpdates = key.GetValue("PauseFeatureUpdates");
                         if (pauseFeatureUpdates != null && Convert.ToInt32(pauseFeatureUpdates) == 1)
                         {
-                            blockingSettings.Add("Feature updates are paused");
+                            blockingSettings.Add("Feature updates paused by update ring policy");
+                        }
+
+                        var pauseQualityUpdates = key.GetValue("PauseQualityUpdates");
+                        if (pauseQualityUpdates != null && Convert.ToInt32(pauseQualityUpdates) == 1)
+                        {
+                            blockingSettings.Add("Quality updates paused by update ring policy");
                         }
 
                         var targetReleaseVersion = key.GetValue("TargetReleaseVersion");
@@ -501,37 +496,7 @@ namespace WinUpdUI
                         {
                             blockingSettings.Add($"Product version restricted to: {productVersion}");
                         }
-                    }
-                }
 
-                // Check Windows Update for Business settings
-                using (var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
-                using (var key = baseKey.OpenSubKey(@"SOFTWARE\Microsoft\WindowsUpdate\UX\Settings"))
-                {
-                    if (key != null)
-                    {
-                        var pauseFeatureUpdatesStartTime = key.GetValue("PauseFeatureUpdatesStartTime");
-                        var pauseFeatureUpdatesEndTime = key.GetValue("PauseFeatureUpdatesEndTime");
-
-                        if (pauseFeatureUpdatesStartTime != null && pauseFeatureUpdatesEndTime != null)
-                        {
-                            blockingSettings.Add($"Feature updates paused until: {pauseFeatureUpdatesEndTime}");
-                        }
-
-                        var deferFeatureUpdatesPeriodInDays = key.GetValue("DeferFeatureUpdatesPeriodInDays");
-                        if (deferFeatureUpdatesPeriodInDays != null)
-                        {
-                            blockingSettings.Add($"Feature updates deferred: {deferFeatureUpdatesPeriodInDays} days");
-                        }
-                    }
-                }
-
-                // Check for Windows 10/11 upgrade blocks
-                using (var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
-                using (var key = baseKey.OpenSubKey(@"SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate"))
-                {
-                    if (key != null)
-                    {
                         var disableOSUpgrade = key.GetValue("DisableOSUpgrade");
                         if (disableOSUpgrade != null && Convert.ToInt32(disableOSUpgrade) == 1)
                         {
@@ -540,23 +505,78 @@ namespace WinUpdUI
                     }
                 }
 
+                // MDM update-ring policy results are the authoritative policy source when available.
+                try
+                {
+                    using (var searcher = new ManagementObjectSearcher(
+                        @"root\cimv2\mdm\dmmap",
+                        "SELECT * FROM MDM_Policy_Result01_Update02"))
+                    {
+                        foreach (ManagementObject policy in searcher.Get())
+                        {
+                            if (Convert.ToInt32(policy["PauseFeatureUpdates"] ?? 0) == 1)
+                                blockingSettings.Add("Feature updates paused by update ring policy");
+                            if (Convert.ToInt32(policy["PauseQualityUpdates"] ?? 0) == 1)
+                                blockingSettings.Add("Quality updates paused by update ring policy");
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                    // Update-ring policy results are unavailable on unmanaged or older systems.
+                }
+
+                // Check pause values written by the Windows Settings app.
+                using (var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
+                using (var key = baseKey.OpenSubKey(@"SOFTWARE\Microsoft\WindowsUpdate\UX\Settings"))
+                {
+                    if (key != null)
+                    {
+                        object pauseAllStart = key.GetValue("PauseUpdatesStartTime");
+                        object pauseAllEnd = key.GetValue("PauseUpdatesExpiryTime");
+                        object pauseFeatureEnd = key.GetValue("PauseFeatureUpdatesEndTime");
+                        object pauseQualityEnd = key.GetValue("PauseQualityUpdatesEndTime");
+
+                        if (pauseAllStart != null && pauseAllEnd != null)
+                        {
+                            blockingSettings.Add($"All updates paused from the Local Settings UI until: {pauseAllEnd}");
+                        }
+                        else
+                        {
+                            if (pauseFeatureEnd != null)
+                                blockingSettings.Add($"Feature updates paused from the Local Settings UI until: {pauseFeatureEnd}");
+                            if (pauseQualityEnd != null)
+                                blockingSettings.Add($"Quality updates paused from the Local Settings UI until: {pauseQualityEnd}");
+                        }
+
+                        var deferFeatureUpdatesPeriodInDays = key.GetValue("DeferFeatureUpdatesPeriodInDays");
+                        var deferQualityUpdatesPeriodInDays = key.GetValue("DeferQualityUpdatesPeriodInDays");
+                        if (deferFeatureUpdatesPeriodInDays != null)
+                            blockingSettings.Add($"Feature updates deferred locally: {deferFeatureUpdatesPeriodInDays} days");
+                        if (deferQualityUpdatesPeriodInDays != null)
+                            blockingSettings.Add($"Quality updates deferred locally: {deferQualityUpdatesPeriodInDays} days");
+                    }
+                }
+
+                blockingSettings = blockingSettings.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
                 if (blockingSettings.Count > 0)
                 {
                     _results.Add(new DiagnosticResult
                     {
-                        CheckName = "Feature Update Restrictions",
+                        CheckName = "Update Restrictions",
                         Status = DiagnosticStatus.Warning,
-                        Message = $"Found {blockingSettings.Count} setting(s) that may block or limit feature updates:\n      " + string.Join("\n      ", blockingSettings),
-                        Recommendation = "Review these settings if feature updates are needed"
+                        Message = $"Found {blockingSettings.Count} setting(s) that may block or limit updates:\n      " + string.Join("\n      ", blockingSettings),
+                        Recommendation = "Review Local Settings UI pauses or update-ring policies, depending on the source shown"
                     });
                 }
                 else
                 {
                     _results.Add(new DiagnosticResult
                     {
-                        CheckName = "Feature Update Restrictions",
+                        CheckName = "Update Restrictions",
                         Status = DiagnosticStatus.Pass,
-                        Message = "No feature update restrictions found"
+                        Message = "No update restrictions or pauses found"
                     });
                 }
             }
@@ -564,9 +584,9 @@ namespace WinUpdUI
             {
                 _results.Add(new DiagnosticResult
                 {
-                    CheckName = "Feature Update Restrictions",
+                    CheckName = "Update Restrictions",
                     Status = DiagnosticStatus.Warning,
-                    Message = $"Could not check feature update restrictions: {ex.Message}"
+                    Message = $"Could not check update restrictions: {ex.Message}"
                 });
             }
         }

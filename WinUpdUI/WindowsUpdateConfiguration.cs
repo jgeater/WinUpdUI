@@ -525,7 +525,7 @@ namespace WinUpdUI
                     }
                 }
 
-                // Check Windows Update for Business settings
+                // Check Windows Update for Business settings and paused updates.
                 using (var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
                 using (var key = baseKey.OpenSubKey(@"SOFTWARE\Microsoft\WindowsUpdate\UX\Settings"))
                 {
@@ -533,9 +533,18 @@ namespace WinUpdUI
                     {
                         var deferFeature = key.GetValue("DeferFeatureUpdatesPeriodInDays");
                         var deferQuality = key.GetValue("DeferQualityUpdatesPeriodInDays");
-                        var pauseStart = key.GetValue("PauseFeatureUpdatesStartTime");
+                        var pauseAllStart = key.GetValue("PauseUpdatesStartTime");
+                        var pauseAllEnd = key.GetValue("PauseUpdatesExpiryTime");
+                        var pauseFeatureStart = key.GetValue("PauseFeatureUpdatesStartTime");
+                        var pauseFeatureEnd = key.GetValue("PauseFeatureUpdatesEndTime");
+                        var pauseQualityStart = key.GetValue("PauseQualityUpdatesStartTime");
+                        var pauseQualityEnd = key.GetValue("PauseQualityUpdatesEndTime");
 
-                        if (deferFeature != null || deferQuality != null || pauseStart != null)
+                        bool hasPause = pauseAllStart != null || pauseAllEnd != null ||
+                                        pauseFeatureStart != null || pauseFeatureEnd != null ||
+                                        pauseQualityStart != null || pauseQualityEnd != null;
+
+                        if (deferFeature != null || deferQuality != null || hasPause)
                         {
                             if (!MDMPolicies.Any(p => p.Contains("Windows Update for Business")))
                             {
@@ -551,8 +560,70 @@ namespace WinUpdUI
                                 MDMPolicies.Add($"Defer Quality Updates: {deferQuality} days");
                                 HasMDMPolicies = true;
                             }
+                            if (pauseAllStart != null && pauseAllEnd != null)
+                            {
+                                MDMPolicies.Add($"Pause source: Local Settings UI (all updates paused until {pauseAllEnd})");
+                                HasMDMPolicies = true;
+                            }
+                            else
+                            {
+                                if (pauseFeatureStart != null && pauseFeatureEnd != null)
+                                {
+                                    MDMPolicies.Add($"Pause source: Local Settings UI (feature updates paused until {pauseFeatureEnd})");
+                                    HasMDMPolicies = true;
+                                }
+                                if (pauseQualityStart != null && pauseQualityEnd != null)
+                                {
+                                    MDMPolicies.Add($"Pause source: Local Settings UI (quality updates paused until {pauseQualityEnd})");
+                                    HasMDMPolicies = true;
+                                }
+                            }
                         }
                     }
+                }
+
+                // Update-ring policies also expose pause state through MDM policy result classes.
+                // If an update ring has paused feature or quality updates, report that source instead
+                // of labeling the pause as a local Settings UI action.
+                try
+                {
+                    using (var searcher = new ManagementObjectSearcher(
+                        @"root\cimv2\mdm\dmmap",
+                        "SELECT * FROM MDM_Policy_Result01_Update02"))
+                    {
+                        bool addedUpdateRingHeader = false;
+                        foreach (ManagementObject policy in searcher.Get())
+                        {
+                            object pauseFeature = policy["PauseFeatureUpdates"];
+                            object pauseQuality = policy["PauseQualityUpdates"];
+
+                            if (pauseFeature != null && Convert.ToInt32(pauseFeature) == 1)
+                            {
+                                if (!addedUpdateRingHeader)
+                                {
+                                    MDMPolicies.Add("\n=== Update Ring Policy ===");
+                                    addedUpdateRingHeader = true;
+                                }
+                                MDMPolicies.Add("Feature updates are paused by an update ring policy");
+                                HasMDMPolicies = true;
+                            }
+
+                            if (pauseQuality != null && Convert.ToInt32(pauseQuality) == 1)
+                            {
+                                if (!addedUpdateRingHeader)
+                                {
+                                    MDMPolicies.Add("\n=== Update Ring Policy ===");
+                                    addedUpdateRingHeader = true;
+                                }
+                                MDMPolicies.Add("Quality updates are paused by an update ring policy");
+                                HasMDMPolicies = true;
+                            }
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                    // Update-ring policy results are unavailable on unmanaged or older systems.
                 }
 
                 // The Intune Management Extension registry key and OMADM enrollment records can exist
