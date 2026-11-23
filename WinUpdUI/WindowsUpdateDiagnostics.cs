@@ -78,13 +78,42 @@ namespace WinUpdUI
                     }
                     else
                     {
-                        _results.Add(new DiagnosticResult
+                        string startMode = GetServiceStartMode(serviceName);
+
+                        // Manual or trigger-started services may be stopped until Windows Update needs them.
+                        // A stopped service is only a warning when it is disabled or should start automatically.
+                        bool isDisabled = startMode.Equals("Disabled", StringComparison.OrdinalIgnoreCase);
+                        bool shouldStartAutomatically = startMode.Equals("Auto", StringComparison.OrdinalIgnoreCase);
+
+                        if (isDisabled)
                         {
-                            CheckName = displayName,
-                            Status = DiagnosticStatus.Warning,
-                            Message = $"{displayName} is not running (Status: {sc.Status})",
-                            Recommendation = $"Start the service using: net start {serviceName}"
-                        });
+                            _results.Add(new DiagnosticResult
+                            {
+                                CheckName = displayName,
+                                Status = DiagnosticStatus.Warning,
+                                Message = $"{displayName} is stopped and disabled",
+                                Recommendation = $"Enable the service using: sc config {serviceName} start= demand"
+                            });
+                        }
+                        else if (shouldStartAutomatically)
+                        {
+                            _results.Add(new DiagnosticResult
+                            {
+                                CheckName = displayName,
+                                Status = DiagnosticStatus.Warning,
+                                Message = $"{displayName} is stopped (Startup: Automatic)",
+                                Recommendation = $"Start the service using: net start {serviceName}"
+                            });
+                        }
+                        else
+                        {
+                            _results.Add(new DiagnosticResult
+                            {
+                                CheckName = displayName,
+                                Status = DiagnosticStatus.Pass,
+                                Message = $"{displayName} is stopped (Startup: {startMode})"
+                            });
+                        }
                     }
                 }
             }
@@ -97,6 +126,27 @@ namespace WinUpdUI
                     Message = $"Error checking {displayName}: {ex.Message}"
                 });
             }
+        }
+
+        private static string GetServiceStartMode(string serviceName)
+        {
+            try
+            {
+                using (var searcher = new ManagementObjectSearcher(
+                    $"SELECT StartMode FROM Win32_Service WHERE Name='{serviceName}'"))
+                {
+                    foreach (ManagementObject service in searcher.Get())
+                    {
+                        return service["StartMode"]?.ToString() ?? "Unknown";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error reading start mode for {serviceName}: {ex.Message}");
+            }
+
+            return "Unknown";
         }
 
         private void CheckDiskSpace()

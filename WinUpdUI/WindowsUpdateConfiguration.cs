@@ -388,12 +388,11 @@ namespace WinUpdUI
                                         var discoveryServiceFullUrl = enrollmentKey.GetValue("DiscoveryServiceFullURL");
                                         var upn = enrollmentKey.GetValue("UPN");
 
-                                        // Only consider it a real enrollment if we have provider info
-                                        bool isRealEnrollment = providerName != null || 
-                                                               providerID != null || 
-                                                               discoveryServiceFullUrl != null;
+                                        // Windows also creates enrollment records for local and platform CSP authorities.
+                                        // Require Intune-specific provider or discovery information before reporting MDM.
+                                        bool isIntuneEnrollment = IsIntuneEnrollmentProvider(providerName, providerID, discoveryServiceFullUrl);
 
-                                        if (isRealEnrollment)
+                                        if (isIntuneEnrollment)
                                         {
                                             if (!MDMPolicies.Any(p => p == "=== MDM Enrollment ==="))
                                             {
@@ -556,37 +555,42 @@ namespace WinUpdUI
                     }
                 }
 
-                // Check Intune Management Extension presence
-                var intuneKeys = new[]
-                {
-                    @"SOFTWARE\Microsoft\IntuneManagementExtension\Win32Apps",
-                    @"SOFTWARE\Microsoft\Provisioning\OMADM\Accounts"
-                };
-
-                using (var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
-                {
-                    foreach (var keyPath in intuneKeys)
-                    {
-                        using (var key = baseKey.OpenSubKey(keyPath))
-                        {
-                            if (key != null)
-                            {
-                                if (!MDMPolicies.Any(p => p.Contains("Intune Management")))
-                                {
-                                    MDMPolicies.Add("\n=== Intune Management ===");
-                                    MDMPolicies.Add($"Intune Management Extension detected");
-                                    HasMDMPolicies = true;
-                                }
-                                break;
-                            }
-                        }
-                    }
-                }
+                // The Intune Management Extension registry key and OMADM enrollment records can exist
+                // without an active Intune enrollment. Never treat their mere presence as proof of MDM.
             }
             catch (Exception ex)
             {
                 MDMPolicies.Add($"Error checking MDM policies: {ex.Message}");
             }
+        }
+
+        private static bool IsIntuneEnrollmentProvider(object providerName, object providerId, object discoveryUrl)
+        {
+            string[] intuneMarkers =
+            {
+                "intune",
+                "microsoft device management",
+                "microsoftintune",
+                "manage.microsoft.com",
+                "dm.microsoft.com"
+            };
+
+            object[] values = { providerName, providerId, discoveryUrl };
+
+            foreach (object value in values)
+            {
+                if (value == null)
+                    continue;
+
+                string text = value.ToString();
+                if (!string.IsNullOrWhiteSpace(text) &&
+                    intuneMarkers.Any(marker => text.IndexOf(marker, StringComparison.OrdinalIgnoreCase) >= 0))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 
