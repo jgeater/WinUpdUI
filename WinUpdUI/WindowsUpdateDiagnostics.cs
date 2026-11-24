@@ -505,6 +505,22 @@ namespace WinUpdUI
                     }
                 }
 
+                // Check PolicyManager update-ring values directly (works even when WMI policy result classes are unavailable).
+                using (var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
+                using (var key = baseKey.OpenSubKey(@"SOFTWARE\Microsoft\PolicyManager\current\device\Update", writable: false))
+                {
+                    if (key != null)
+                    {
+                        object pauseFeaturePolicy = key.GetValue("PauseFeatureUpdates");
+                        object pauseQualityPolicy = key.GetValue("PauseQualityUpdates");
+
+                        if (pauseFeaturePolicy != null && Convert.ToInt32(pauseFeaturePolicy) == 1)
+                            blockingSettings.Add("Feature updates paused by update ring policy (PolicyManager)");
+                        if (pauseQualityPolicy != null && Convert.ToInt32(pauseQualityPolicy) == 1)
+                            blockingSettings.Add("Quality updates paused by update ring policy (PolicyManager)");
+                    }
+                }
+
                 // MDM update-ring policy results are the authoritative policy source when available.
                 try
                 {
@@ -562,12 +578,17 @@ namespace WinUpdUI
 
                 if (blockingSettings.Count > 0)
                 {
+                    bool hasActivePause = blockingSettings.Any(s =>
+                        s.IndexOf("paused", StringComparison.OrdinalIgnoreCase) >= 0);
+
                     _results.Add(new DiagnosticResult
                     {
                         CheckName = "Update Restrictions",
-                        Status = DiagnosticStatus.Warning,
+                        Status = hasActivePause ? DiagnosticStatus.Error : DiagnosticStatus.Warning,
                         Message = $"Found {blockingSettings.Count} setting(s) that may block or limit updates:\n      " + string.Join("\n      ", blockingSettings),
-                        Recommendation = "Review Local Settings UI pauses or update-ring policies, depending on the source shown"
+                        Recommendation = hasActivePause
+                            ? "Updates are currently paused. Resume updates in Settings or remove the update-ring pause policy."
+                            : "Review Local Settings UI pauses or update-ring policies, depending on the source shown"
                     });
                 }
                 else
